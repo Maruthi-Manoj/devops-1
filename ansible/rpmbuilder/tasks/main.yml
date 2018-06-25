@@ -1,0 +1,139 @@
+---
+# tasks file for rpmbuilder
+      
+- name: Install build essentials
+  yum:
+      name: "@Development Tools"
+      state: present
+  tags:
+      - rpmbuilder
+
+- name: install java for rpmbuilder agent
+  yum:
+    name: "java-1.8.0-openjdk"
+  tags:
+      - rpmbuilder
+      - rpmbuilder-java
+
+- name: install java devel for rpmbuilder agent
+  yum:
+    name: "java-1.8.0-openjdk-devel"
+  tags:
+      - rpmbuilder
+      - rpmbuilder-java-devel          
+
+- name: Set ENV Variables
+  environment:
+      CC: /opt/rh/devtoolset-6/root/usr/bin/gcc
+      CXX: /opt/rh/devtoolset-6/root/usr/bin/g++
+      FC: /opt/rh/devtoolset-6/root/usr/bin/gfortran
+  yum:
+    name: "libffi-devel"    
+  tags:
+      - rpmbuilder
+
+- name: Export the PATH, install fpm and create soft link
+  shell: |
+      /usr/local/rvm/rubies/ruby-1.9.3-p551/bin/gem install --no-ri --no-rdoc fpm -v 1.4.0
+  tags:
+      - rpmbuilder
+      - fab
+
+- name: Install pre packages
+  yum:
+      name: "{{ item}}"
+      state: present
+  with_items:
+      - openssl-devel
+      - openssl
+  tags:
+      - rpmbuilder
+
+- name: Create soft links
+  shell: |
+      source /opt/rh/devtoolset-6/enable && pip2.7 install fabric
+  tags:
+      - rpmbuilder
+
+- name: Other packages that rpmbuilder required
+  shell: |
+      /opt/rh/python27/root/usr/bin/pip2.7 install requests
+      /opt/rh/python27/root/usr/bin/pip2.7 install pyyaml
+      /opt/rh/python27/root/usr/bin/pip2.7 install fabric
+  tags:
+      - rpmbuilder
+      - rpmbuilder-pip      
+
+- name: Install createrepo package
+  yum:
+      name: "{{ item}}"
+      state: present
+  with_items:
+      - createrepo
+  tags:
+      - rpmbuilder
+
+- name: check scala already installed
+  command: rpm -qa scala
+  register: result
+  tags:
+      - scala-2.11.8
+      - rpmbuilder 
+
+- name: download scala-2.11.8
+  shell: rpm -ivh https://downloads.lightbend.com/scala/2.11.8/scala-2.11.8.rpm
+  when: result|failed
+  tags:
+      - scala-2.11.8
+      - rpmbuilder 
+
+- name: Setup nodejs
+  shell: |
+      curl --silent --location https://rpm.nodesource.com/setup_6.x | bash -
+      yum install -y nodejs
+      npm install -g n
+      n 5.11.1
+  tags:
+      - nodejs 
+      - rpmbuilder
+
+- name: Setup sbt
+  shell: |
+      curl https://bintray.com/sbt/rpm/rpm | tee /etc/yum.repos.d/bintray-sbt-rpm.repo
+      yum install -y sbt
+      sbt sbtVersion
+      sbt new sbt/scala-seed.g8
+  tags:
+      - sbt 
+      - rpmbuilder      
+
+- name: Create work directories
+  file: 
+      path:
+        - /builder
+        - /builder/atlas
+        - /builder/repo
+        - /root/rpm_building
+      state: directory
+  tags:    
+      - rpmbuilder
+
+- name: Create ssh directory
+  file: 
+      path:
+        - /root/.ssh
+      state: directory
+  tags:    
+      - rpmbuilder
+
+- name: Copy ssh config file
+  copy:
+      dest: /root/.ssh/config
+      src: files/ssh_config
+      mode: 0400
+  tags:
+      - ssh config
+      - rpmbuilder
+
+# Setup/install tasks.
+- include: setup-nginx.yml

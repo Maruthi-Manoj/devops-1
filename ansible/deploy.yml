@@ -1,0 +1,4 @@
+- hosts: rpmbuilder
+  become: yes
+  roles:
+    - role: rpmbuilder
