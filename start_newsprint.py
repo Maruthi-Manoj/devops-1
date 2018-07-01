@@ -16,7 +16,7 @@ import os
 #To get the current sprint version
 #config values
 #AUTH_TOKEN = "token 1d726f6163785e6e7bd6c7205d1c1a806a73ace6"
-giturl = "https://api.github.com/repos/MANOHAR452/devops/"
+giturl = "https://api.github.com/repos/Maruthi-Manoj/devops-1/"
 commit_message = "Automated commit to update sprint version at the beginning of sprint"
 xpc_version_file = "contents/sprint_version.txt?ref=master"
 sha = None
@@ -37,13 +37,13 @@ def getContent(filePath):
 
 #logging.basicConfig(level=logging.DEBUG)
 
-username = "MANOHAR452"
-password = "xxxxxxxxxx"
+username = "MARUTHI-MANOJ"
+password = "Apple123"
 #HEADER = {"Authorization": "bearer 1d726f6163785e6e7bd6c7205d1c1a806a73ace6"}
 
 
 
-API_PATH = "https://api.github.com/repos/MANOHAR452"
+API_PATH = "https://api.github.com/repos/Maruthi-Manoj"
 
 
 
@@ -182,7 +182,7 @@ def findNewVersion(previousVersion):
 if __name__ == '__main__':
 
     print ('working on /devops')
-    get_it_done('/devops')
+    get_it_done('/Spark')
     print ('working on sprint_version.txt file update')
     file_content = getContent(xpc_version_file)
     previousVersion = file_content.split('current_sprint =')[1].split("'")[1]
