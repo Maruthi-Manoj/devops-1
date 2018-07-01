@@ -8,7 +8,6 @@ import os
 import re
 import base64
 import re
-
 import requests
 from fabric.api import env, cd, run, shell_env
 #import gitlab_helper
@@ -43,7 +42,7 @@ def _get_branch_and_real_sha(name, branch, sha):
     '''
     run("rm -rf %s/%s" % (WORKDIR, name))
     with cd(WORKDIR):
-        run("git clone git@github.com:MANOHAR452/%s.git --branch %s" % (name, branch))
+        run("git clone git@github.com:Maruthi-Manoj/%s.git --branch %s" % (name, branch))
     # If there is a sha do a reset on that sha to get that specific snapshot
     if sha != 'latest':
         with cd('%s/%s' % (WORKDIR, name)):
@@ -61,7 +60,7 @@ def _directory_repo_fpm_command(name, version, build, sha):
             "fpm -f -s tar -t rpm -n $name -v $version --iteration $release "
             "--description \"$sha\" "
             "--license '$year. manohar. All rights reserved.' "
-            "--url 'https://github.com/MANOHAR452' --directories /app/$name-$version-$build.$sha "
+            "--url 'https://github.com/Maruthi-Manoj' --directories /app/$name-$version-$build.$sha "
             "--prefix /app/$name-$version-$build.$sha "
             "$name.tar.gz"
             ).substitute(name=name, version=version, build=build, year=year, sha=sha, release=release)
