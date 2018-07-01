@@ -71,24 +71,9 @@ def _build_rpm(name, version, build, sha):
     Builds a rpm
     '''
     build, _, _ = _get_build_number_and_latest_sha(name, version)
-    # traffic consumer is special
-    # 2 rpms get built for it
-    if name == 'pr_device_traffic_data':
-
-        _build_consumer("pr_device_usage_ingestion", version, build, sha)
-        _build_consumer("network_activity_accumulator", version, build, sha)
-        _build_consumer("network_activity_detection", version, build, sha)
-        _build_consumer("device_usage_aggregation_daily", version, build, sha)
-        _build_consumer("device_usage_aggregation_hourly", version, build, sha)
-        _build_consumer("network_activity_limits_simulator", version, build, sha)
-        _build_consumer("network_activity_simulator", version, build, sha)
-
     with cd(WORKDIR):
         filename = _get_full_rpm_name(name, version, build, sha)
-        if name in SCALA_CONSUMERS:
-            fpm_command = _spark_fpm_command(name, version, build, sha)
-        else:
-            fpm_command = _directory_repo_fpm_command(name, version, build, sha)
+        fpm_command = _directory_repo_fpm_command(name, version, build, sha)
         run(fpm_command)
     _add_rpm_to_repo(name, filename, version)
     _final_cleanup(name, version)
