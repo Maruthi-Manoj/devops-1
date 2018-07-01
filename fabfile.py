@@ -11,12 +11,12 @@ import re
 
 import requests
 from fabric.api import env, cd, run, shell_env
-import gitlab_helper
+#import gitlab_helper
 
 # Where all the rpms are built
-env.hosts= ['96.118.151.85']
+env.hosts= ['35.231.84.32']
 env.user = 'root'
-env.key_filename = './powercloud.pem'
+env.key_filename = '~/.ssh/id_rsa'
 
 # Where to clone all the repos
 WORKDIR = os.getenv('WORKDIR', '/root/rpm_building')
@@ -30,93 +30,11 @@ extra_pips = [
         'supervisor==3.1.3',
         ]
 
-
-
-SCALA_CONSUMERS = [
-        'notification_device_host_consumer',
-        'pr_device_interface_data',
-        'pr_device_status_data',
-        'pr_device_traffic_data',
-        'xpc_scala_sync_consumer',
-        ]
-
-# Each repo builds in a different directory
-SCALA_JAR_DIRECTORY = {
-        'notification_device_host_consumer': 'notification_device_host_consumer',
-        'pr_device_interface_data': '.',
-        'pr_device_status_data': 'network_device_status',
-        'pr_device_traffic_data': 'network_device_traffic_data',
-        'xpc_scala_sync_consumer': 'xpc_scala_sync_consumer',
-        }
-ODPDATA_JAR_DIRECTORY = {
-        'notification_device_host_consumer': 'notification_device_host_consumer',
-        'pr_device_interface_data': 'pr_device_interface_data',
-        'pr_device_status_data': 'pr_device_status_data',
-        'pr_device_traffic_data': 'pr_device_traffic_data',
-        }
-
 def build_xap(branch='develop', sha='latest'):
     '''Build rpm of target'''
-    sha = _get_branch_and_real_sha('xap', branch, sha)
-    _build_rpm_from_directory('xap', branch, sha)
+    sha = _get_branch_and_real_sha('Spark', branch, sha)
+    _build_rpm_from_directory('Spark', branch, sha)
 
-def build_xpc_extender(branch='xpc_extender', sha='latest'):
-    '''Build rpm of target'''
-    sha = _get_branch_and_real_sha('xap', branch, sha)
-    _build_rpm_from_directory('xap', branch, sha)
-
-def build_xpc_kafkaconsumer(branch='develop', sha='latest'):
-    '''Build rpm of target'''
-    sha = _get_branch_and_real_sha('xpc-kafkaconsumer', branch, sha)
-    _build_rpm_from_directory('xpc-kafkaconsumer', branch, sha)
-
-def build_xpchook(branch='master', sha='latest'):
-    '''Build rpm of target'''
-    sha = _get_branch_and_real_sha('goxpchook', branch, sha)
-    _build_go('goxpchook', branch, sha)
-
-def build_odphook(branch='develop', sha='latest'):
-    '''Build rpm of target'''
-    _build_nodejs('odphook', branch, sha)
-
-def build_multiplexer(branch='develop', sha='latest'):
-    '''Build rpm of target'''
-    _build_nodejs('multiplexer', branch, sha)
-
-def build_xmanage(branch='develop', sha='latest'):
-    '''Build rpm of target'''
-    sha = _get_branch_and_real_sha('xmanage', branch, sha)
-    _build_rpm_from_directory('xmanage', branch, sha)
-
-def build_notification_device_host_consumer(branch='develop', sha='latest', spark_build='2'):
-    '''Build rpm of target'''
-    _build_spark('notification_device_host_consumer', branch, sha, spark_build)
-
-def build_pr_device_interface_data(branch='develop', sha='latest', spark_build='2'):
-    '''Build rpm of target'''
-    _build_spark('pr_device_interface_data', branch, sha, spark_build)
-
-def build_pr_device_traffic_data(branch='develop', sha='latest', spark_build='2'):
-    '''Build rpm of target and also build pr_device_usage_ingestion, network_activity_accumulator, network_activity_detection, network_activity_limits_simulator, network_activity_simulator, device_usage_aggreation_daily, device_usage_aggregation_hourly'''
-    _build_spark('pr_device_traffic_data', branch, sha, spark_build)
-
-def build_pr_device_status_data(branch='develop', sha='latest', spark_build='2'):
-    '''Build rpm of target'''
-    _build_spark('pr_device_status_data', branch, sha, spark_build)
-
-def build_xpc_scala_sync_consumer(branch='develop', sha='latest', spark_build='2'):
-    '''Build rpm of target'''
-    _build_spark('xpc_scala_sync_consumer', branch, sha, spark_build)
-
-def build_odpData(branch='develop', sha='latest'):
-    '''Build rpm of target'''
-    _build_spark_odpData('odpData', branch, sha)
-
-def _build_nodejs(name, branch, sha):
-    sha = _get_branch_and_real_sha(name, branch, sha)
-    with cd('%s/%s' % (WORKDIR, name)):
-        run('source /opt/rh/devtoolset-3/enable; npm install')
-    _build_rpm_from_directory(name, branch, sha)
 
 def _get_branch_and_real_sha(name, branch, sha):
     '''
@@ -135,93 +53,6 @@ def _get_branch_and_real_sha(name, branch, sha):
     if not sha or sha == '':
         raise SystemExit('Invalid sha found %s' % sha)
     return sha
-
-def _build_go(name, branch, sha):
-    '''
-    This builds a go executable
-    currently this is hard coded to really only work with xpchook
-    '''
-    gopath = '%s/%s' % (WORKDIR, name)
-    version = _determine_version(branch)
-    sha = _get_branch_and_real_sha(name, branch, sha)
-    # Go requires an env named GOPATH to build
-    with shell_env(GOPATH=gopath):
-        with cd("%s/%s" % (WORKDIR, name)):
-            run('git submodule update --init')
-        with cd("%s/%s/src/xpchook" % (WORKDIR, name)):
-            print('Building hook_server')
-            run('go build -o hook_server')
-            run('GZIP=-9 tar -cvzf %s/%s.tar.gz hook_server' % (WORKDIR, name))
-    build, _, _ = _get_build_number_and_latest_sha(name, version)
-    _build_rpm(name, version, build, sha)
-
-
-def _build_spark(name, branch, sha, spark_build='2'):
-    '''
-    Builds a spark jar from a scala repo
-    '''
-    version = _determine_version(branch)
-    sha = _get_branch_and_real_sha(name, branch, sha)
-    if spark_build == '2':
-        run("echo BUILDING WITH SPARK 2")
-    else:
-        run("echo BUILDING WITH SPARK 1.6")
-
-    with cd('%s/%s/' % (WORKDIR, name)):
-        # This can be removed when they rename it correctly in repos
-        if spark_build == '2':
-            run('sbt assembly')
-        else:
-            run('sbt ++2.10.6 assembly')
-
-    jardir = SCALA_JAR_DIRECTORY[name]
-    if spark_build == '2.11':
-        with cd('%s/%s/%s/target/scala-2.11' %  (WORKDIR, name, jardir)):
-            run('GZIP=-9 tar -cvzf %s/%s.tar.gz *.jar' % (WORKDIR, name))
-    else:
-        with cd('%s/%s/%s/target/scala-2.10' %  (WORKDIR, name, jardir)):
-            run('GZIP=-9 tar -cvzf %s/%s.tar.gz *.jar' % (WORKDIR, name))
-
-
-    build, _, _ = _get_build_number_and_latest_sha(name, version)
-    _build_rpm(name, version, build, sha)
-
-def _build_spark_odpData(name, branch, sha):
-    '''
-    Builds a spark jar from a scala repo
-    '''
-    version = _determine_version(branch)
-    sha = _get_branch_and_real_sha(name, branch, sha)
-    with cd('%s/%s/' % (WORKDIR, name)):
-        # This can be removed when they rename it correctly in repos
-        run('sbt -J-Xmx4G -J-Xms4G assembly')
-
-    for repo in ODPDATA_JAR_DIRECTORY.values():
-        with cd('%s/%s/%s/target/scala-2.11' %  (WORKDIR, name, repo)):
-            run('GZIP=-9 tar -cvzf %s/%s.tar.gz *.jar' % (WORKDIR, repo))
-
-            build, _, _ = _get_build_number_and_latest_sha(repo, version)
-            _build_rpm(repo, version, build, sha)
-
-def _spark_fpm_command(name, version, build, sha, tarname=None):
-    '''
-    Creates the fpm. If tarname is none it is set to name
-    '''
-    if not tarname:
-        tarname = name
-    year = datetime.datetime.now().year
-    release = "%s.%s" % (build, sha)
-    fpm_command = string.Template(
-            "fpm -f -s tar -t rpm -n $name -v $version --iteration $release "
-            "--description \"$sha\" "
-            "--license '$year. manohar. All rights reserved.' "
-            "--url 'https://github.com/MANOHAR452' "
-            "--prefix /app/consumer-jars/$name-$version-$build.$sha "
-            "--directories /app/consumer-jars/$name-$version-$build.$sha "
-            "$tarname.tar.gz").substitute(
-                    name=name, version=version, build=build,
-                    year=year, sha=sha, release=release, tarname=tarname)
-    return fpm_command
 
 def _directory_repo_fpm_command(name, version, build, sha):
     year = datetime.datetime.now().year
@@ -269,17 +100,6 @@ def _get_full_rpm_name(name, version, build, sha):
     '''
     filename= "%s-%s-%s.%s.x86_64.rpm" % (name, version, build, sha)
     return filename
-
-def _build_consumer(name, version, build, sha):
-    '''
-    Builds consumer from traffic jar
-    '''
-    with cd(WORKDIR):
-        tarname = 'pr_device_traffic_data'
-        filename = _get_full_rpm_name(name, version, build, sha)
-        fpm_command = _spark_fpm_command(name, version, build, sha, tarname)
-        run(fpm_command)
-    _add_rpm_to_repo(name, filename, version)
 
 
 def _add_rpm_to_repo(name, filename, version):
@@ -394,87 +214,6 @@ def _get_current_sha_if_latest(name, sha='latest'):
     new_sha = last_commit.split('\r')[1].split(' ')[0]
     return new_sha
 
-def change_version_in_puppet(name, color, version, build, sha, n_1="no", project='odp'):
-    '''
-    (DEPRECATED) Sets the version in puppet for a color. In {{color}}.yaml
-    '''
-    # Change both the color yaml and powercloud_xap.yaml
-    print "WARNING change_version_in_puppet is DEPRECATED"
-    for yaml_name in ['powercloud_xap_dev', color ]:
-        content_file = 'hiera/%s.yaml' % yaml_name
-        the_yaml = gitlab_helper.get_content(content_file, project=project)
-        full_version = _get_full_version_from_rpmrepo(name, version, build, sha)
-        if n_1 == "yes":
-            version_object = "%s_%s_build_n-1: " % (color, name)
-        else:
-            version_object = "%s_%s_build: " % (color, name)
-
-        regex = version_object + ".*\n"
-        new_yaml = re.sub(regex, version_object + full_version + '\n', the_yaml)
-        encoded_yaml = base64.b64encode(new_yaml)
-        gitlab_helper.update_content('hiera/%s.yaml' % yaml_name, encoded_yaml, project=project)
-
-def change_version_in_puppet_prime(name, color, version, build, sha, n_1="no", project='odp', magneto_branch='yellow'):
-    '''
-    (DEPRECATED) Sets the version in puppet for a color. In {{color}}.yaml
-    '''
-    # Change both the color yaml and powercloud_xap.yaml
-    print "WARNING change_version_in_puppet is DEPRECATED"
-    for yaml_name in [color]:
-        content_file = 'hiera/%s.yaml' % yaml_name
-        the_yaml = gitlab_helper.get_content(content_file, project=project, branch_name=magneto_branch)
-        full_version = _get_full_version_from_rpmrepo(name, version, build, sha)
-        # This is only for yellow build_prime
-        version_object = "%s_%s_build_prime: " % (color, name)
-
-        regex = version_object + ".*\n"
-        new_yaml = re.sub(regex, version_object + full_version + '\n', the_yaml)
-        encoded_yaml = base64.b64encode(new_yaml)
-        gitlab_helper.update_content('hiera/%s.yaml' % yaml_name, encoded_yaml, project=project, branch_name=magneto_branch)
-
-def change_version_in_puppet_v2(name, version, build, sha, project, branch='develop', magneto_branch='dev', suffix=''):
-    '''
-    Sets the version in puppet for a color. In version.pp. use suffix for _n_1 or _prime
-    '''
-    content_file = 'modules/%s/manifests/versions.pp' % project
-    versions_pp = gitlab_helper.get_content(content_file, project=project, branch_name=magneto_branch)
-    full_version = _get_full_version_from_rpmrepo(name, version, build, sha, branch)
-    # The build time for the current RPM is set in version.pp
-    build_time = datetime.datetime.utcnow().strftime("%c UTC")
-    print 'BUILDTIME: %s' % build_time
-    # '-' is not allowed as a variable in puppet. So it must be removed. Done because of xpc-kafkaconsumer repo
-    version_object = "%s_version%s = '" % (name.replace('-', ''), suffix)
-    build_object = "%s_build_time%s = '" % (name.replace('-', ''), suffix)
-
-    regex_version = version_object + ".*\n"
-    regex_build =  build_object + ".*\n"
-    new_versions_pp = re.sub(regex_version, version_object + full_version + "'\n", versions_pp)
-    new_versions_pp = re.sub(regex_build, build_object + build_time + "'\n", new_versions_pp)
-    encoded_yaml = base64.b64encode(new_versions_pp)
-    gitlab_helper.update_content(content_file, encoded_yaml, project=project, branch_name=magneto_branch)
-
-def change_odpdata_version_in_puppet(version, build, sha, project, branch='develop', magneto_branch='dev', suffix=''):
-    '''
-    Sets the version in puppet for a color. In version.pp. use suffix for _n_1 or _prime
-    '''
-    content_file = 'modules/%s/manifests/versions.pp' % project
-    versions_pp = gitlab_helper.get_content(content_file, project=project, branch_name=magneto_branch)
-    for name in ODPDATA_JAR_DIRECTORY.values():
-
-        full_version = _get_full_version_from_rpmrepo(name, version, build, sha, branch)
-        # The build time for the current RPM is set in version.pp
-        build_time = datetime.datetime.utcnow().strftime("%c UTC")
-        print 'BUILDTIME: %s' % build_time
-        # '-' is not allowed as a variable in puppet. So it must be removed. Done because of xpc-kafkaconsumer repo
-        version_object = "%s_version%s = '" % (name.replace('-', ''), suffix)
-        build_object = "%s_build_time%s = '" % (name.replace('-', ''), suffix)
-
-        regex_version = version_object + ".*\n"
-        regex_build =  build_object + ".*\n"
-        versions_pp = re.sub(regex_version, version_object + full_version + "'\n", versions_pp)
-        versions_pp = re.sub(regex_build, build_object + build_time + "'\n", versions_pp)
-        encoded_yaml = base64.b64encode(versions_pp)
-    gitlab_helper.update_content(content_file, encoded_yaml, project=project, branch_name=magneto_branch)
 
 def add_virtualenv(name, relative_requirement_path='.', force=False):
     # francis said this will work
