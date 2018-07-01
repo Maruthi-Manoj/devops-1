@@ -181,7 +181,7 @@ def _get_current_versions():
     '''
     Gets the version from within sprint_version.txt
     '''
-    with open('../files/version/sprint_version.txt') as version_file:
+    with open('./sprint_version.txt') as version_file:
         version_info = version_file.read()
 
     # Determine the current sprint via the sprint_version.txt file
