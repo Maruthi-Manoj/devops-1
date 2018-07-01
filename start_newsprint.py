@@ -181,7 +181,7 @@ def findNewVersion(previousVersion):
 
 if __name__ == '__main__':
 
-    print ('working on /devops')
+    print ('working on /Spark')
     get_it_done('/Spark')
     print ('working on sprint_version.txt file update')
     file_content = getContent(xpc_version_file)
